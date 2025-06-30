@@ -156,14 +156,15 @@ function App() {
       window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.addEventListener('appinstalled', handleAppInstalled);
 
-      // Enhanced security: Disable right-click context menu in production
+      // Enhanced security: Disable right-click context menu in production (مع تحسين)
       const handleContextMenu = (e: MouseEvent) => {
         if (process.env.NODE_ENV === 'production') {
           e.preventDefault();
         }
       };
 
-      // Enhanced security: Disable F12 and other dev tools shortcuts
+      // Enhanced security: Disable F12 and other dev tools shortcuts (مع تحسين لتجنب الإشعارات المتكررة)
+      let lastKeydownNotification = 0;
       const handleKeyDown = (e: KeyboardEvent) => {
         if (process.env.NODE_ENV === 'production') {
           // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
@@ -171,12 +172,18 @@ function App() {
               (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J')) ||
               (e.ctrlKey && e.key === 'U')) {
             e.preventDefault();
-            addNotification({
-              type: 'warning',
-              message: language === 'ar' 
-                ? '⚠️ تم تعطيل أدوات المطور لحماية النظام' 
-                : '⚠️ Developer tools disabled for system security'
-            });
+            
+            // إرسال إشعار واحد فقط كل 10 ثوانٍ
+            const now = Date.now();
+            if (now - lastKeydownNotification > 10000) {
+              addNotification({
+                type: 'warning',
+                message: language === 'ar' 
+                  ? '⚠️ تم تعطيل أدوات المطور لحماية النظام' 
+                  : '⚠️ Developer tools disabled for system security'
+              });
+              lastKeydownNotification = now;
+            }
           }
         }
       };
