@@ -2,28 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Package, 
-  User, 
-  Lock, 
-  Hash,
-  Eye,
-  EyeOff,
-  UserPlus,
-  LogIn,
-  Shield,
-  Users,
-  Plus,
-  Trash2,
-  CheckCircle,
-  XCircle,
-  Info,
-  Mail,
-  Globe,
-  Building,
-  AlertTriangle,
-  Separator
-} from 'lucide-react';
+import { Package, User, Lock, Hash, Eye, EyeOff, UserPlus, LogIn, Shield, Users, Plus, Trash2, CheckCircle, XCircle, Info, Mail, Globe, Building, AlertTriangle, SeparatorVertical as Separator } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import GoogleLoginButton from '../components/Auth/GoogleLoginButton';
 
