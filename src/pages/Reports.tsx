@@ -58,6 +58,35 @@ const Reports: React.FC = () => {
 
   const isRTL = i18n.language === 'ar';
 
+  // Enhanced color palette with better contrast
+  const COLORS = [
+    '#3B82F6', // blue
+    '#10B981', // green
+    '#F59E0B', // yellow
+    '#EF4444', // red
+    '#8B5CF6', // purple
+    '#EC4899', // pink
+    '#14B8A6', // teal
+    '#F97316', // orange
+    '#6366F1', // indigo
+    '#D946EF', // fuchsia
+    '#0EA5E9', // sky
+    '#84CC16'  // lime
+  ];
+
+  // Function to determine if a color is light or dark
+  function isLightColor(color: string) {
+    // Convert hex to RGB
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    // Calculate brightness (YIQ formula)
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 128;
+  }
+
   const analytics = useMemo(() => {
     const totalRevenue = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
     const totalProducts = products.length;
@@ -153,36 +182,7 @@ const Reports: React.FC = () => {
       salesTrendData,
       monthlyData
     };
-  }, [products, sales, isRTL]);
-
-  // Function to determine if a color is light or dark
-  function isLightColor(color: string) {
-    // Convert hex to RGB
-    const hex = color.replace('#', '');
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
-    
-    // Calculate brightness (YIQ formula)
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    return brightness > 128;
-  }
-
-  // Enhanced color palette with better contrast
-  const COLORS = [
-    '#3B82F6', // blue
-    '#10B981', // green
-    '#F59E0B', // yellow
-    '#EF4444', // red
-    '#8B5CF6', // purple
-    '#EC4899', // pink
-    '#14B8A6', // teal
-    '#F97316', // orange
-    '#6366F1', // indigo
-    '#D946EF', // fuchsia
-    '#0EA5E9', // sky
-    '#84CC16'  // lime
-  ];
+  }, [products, sales]);
 
   const handleRefresh = async () => {
     setIsLoading(true);
@@ -387,7 +387,7 @@ const Reports: React.FC = () => {
         <div className={`p-3 rounded-lg shadow-lg ${
           theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
         }`}>
-          <p className={`font-bold ${data.textColor}`}>{data.category}</p>
+          <p className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{data.category}</p>
           <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
             {t('products')}: <span className="font-medium">{data.count}</span>
           </p>
@@ -712,18 +712,8 @@ const Reports: React.FC = () => {
                         fill="#8884d8"
                         dataKey="value"
                         nameKey="category"
-                        label={({ category, percent, textColor }) => (
-                          <text 
-                            x={0} 
-                            y={0} 
-                            fill={textColor || '#FFFFFF'} 
-                            textAnchor="middle" 
-                            dominantBaseline="central"
-                            fontSize={12}
-                            fontWeight="bold"
-                          >
-                            {`${category} ${(percent * 100).toFixed(0)}%`}
-                          </text>
+                        label={({ category, percent }) => (
+                          `${category} ${(percent * 100).toFixed(0)}%`
                         )}
                       >
                         {analytics.categoryData.map((entry, index) => (
