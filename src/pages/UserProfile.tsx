@@ -10,24 +10,20 @@ import {
   Edit, 
   Save, 
   X, 
-  Plus, 
-  Trash2, 
-  Users, 
-  Key, 
   Calendar, 
   CheckCircle, 
   XCircle,
   Crown,
   Briefcase,
   Lock,
-  UserPlus,
   Settings as SettingsIcon,
   AlertTriangle,
-  Building
+  Building,
+  Mail,
+  Globe
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import Sidebar from '../components/Layout/Sidebar';
-import Modal from '../components/UI/Modal';
 
 const UserProfile: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -35,17 +31,12 @@ const UserProfile: React.FC = () => {
     theme, 
     currentUser, 
     users, 
-    serialNumbers, 
-    addSerialNumber, 
-    removeSerialNumber,
     addNotification 
   } = useStore();
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [isAddSerialModalOpen, setIsAddSerialModalOpen] = useState(false);
-  const [newSerialNumber, setNewSerialNumber] = useState('');
   const [editForm, setEditForm] = useState({
     username: currentUser?.username || '',
     password: currentUser?.password || ''
@@ -64,19 +55,6 @@ const UserProfile: React.FC = () => {
     setIsEditingProfile(false);
   };
 
-  const handleAddSerialNumber = () => {
-    if (newSerialNumber.trim() && /^\d{6}$/.test(newSerialNumber)) {
-      addSerialNumber(newSerialNumber.trim());
-      setNewSerialNumber('');
-      setIsAddSerialModalOpen(false);
-    }
-  };
-
-  // التحقق من صحة الرقم التسلسلي (6 أرقام فقط)
-  const isValidSerial = (serial: string) => {
-    return /^\d{6}$/.test(serial);
-  };
-
   const userStats = [
     {
       icon: Users,
@@ -87,27 +65,27 @@ const UserProfile: React.FC = () => {
       adminOnly: true
     },
     {
-      icon: Key,
-      label: isRTL ? 'الأرقام التسلسلية' : 'Serial Numbers',
-      value: serialNumbers.length,
-      color: 'text-green-500',
-      bgColor: 'bg-green-50 dark:bg-green-900/20',
-      adminOnly: true
-    },
-    {
-      icon: CheckCircle,
-      label: isRTL ? 'أرقام مستخدمة' : 'Used Numbers',
-      value: serialNumbers.filter(s => s.isUsed).length,
-      color: 'text-purple-500',
-      bgColor: 'bg-purple-50 dark:bg-purple-900/20',
-      adminOnly: true
-    },
-    {
       icon: Calendar,
       label: isRTL ? 'تاريخ الانضمام' : 'Member Since',
       value: currentUser ? new Date(currentUser.createdAt).toLocaleDateString() : '',
       color: 'text-orange-500',
       bgColor: 'bg-orange-50 dark:bg-orange-900/20',
+      adminOnly: false
+    },
+    {
+      icon: Shield,
+      label: isRTL ? 'حالة الأمان' : 'Security Status',
+      value: currentUser?.twoFactorEnabled ? (isRTL ? 'محمي' : 'Protected') : (isRTL ? 'عادي' : 'Standard'),
+      color: currentUser?.twoFactorEnabled ? 'text-green-500' : 'text-yellow-500',
+      bgColor: currentUser?.twoFactorEnabled ? 'bg-green-50 dark:bg-green-900/20' : 'bg-yellow-50 dark:bg-yellow-900/20',
+      adminOnly: false
+    },
+    {
+      icon: CheckCircle,
+      label: isRTL ? 'حالة الحساب' : 'Account Status',
+      value: currentUser?.isActive ? (isRTL ? 'نشط' : 'Active') : (isRTL ? 'غير نشط' : 'Inactive'),
+      color: currentUser?.isActive ? 'text-green-500' : 'text-red-500',
+      bgColor: currentUser?.isActive ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20',
       adminOnly: false
     }
   ];
@@ -268,7 +246,13 @@ const UserProfile: React.FC = () => {
                         : 'bg-gradient-to-br from-blue-500 to-blue-700'
                     } shadow-lg`}
                   >
-                    {currentUser.role === 'admin' ? (
+                    {currentUser.picture ? (
+                      <img 
+                        src={currentUser.picture} 
+                        alt={currentUser.username}
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                    ) : currentUser.role === 'admin' ? (
                       <Crown className="w-12 h-12 text-white" />
                     ) : (
                       <User className="w-12 h-12 text-white" />
@@ -356,61 +340,30 @@ const UserProfile: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Password */}
+                  {/* Email */}
                   <div>
                     <label className={`block text-sm font-medium mb-2 ${
                       theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                     }`}>
-                      {isRTL ? 'كلمة المرور' : 'Password'}
+                      {isRTL ? 'البريد الإلكتروني' : 'Email'}
                     </label>
-                    {isEditingProfile ? (
-                      <div className="relative">
-                        <input
-                          type={showPassword ? 'text' : 'password'}
-                          value={editForm.password}
-                          onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
-                          className={`w-full px-3 py-2 pr-10 border rounded-lg ${
-                            theme === 'dark'
-                              ? 'bg-gray-700 border-gray-600 text-white'
-                              : 'bg-white border-gray-300 text-gray-900'
-                          } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-                        />
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className={`absolute right-3 top-1/2 transform -translate-y-1/2 ${
-                            theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'
-                          } transition-colors`}
-                        >
-                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                        </motion.button>
-                      </div>
-                    ) : (
-                      <div className={`flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 border rounded-lg ${
-                        theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-300'
+                    <div className={`flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 border rounded-lg ${
+                      theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-300'
+                    }`}>
+                      <Mail className={`w-5 h-5 ${
+                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                      }`} />
+                      <span className={`${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
                       }`}>
-                        <Lock className={`w-5 h-5 ${
-                          theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                        }`} />
-                        <span className={`${
-                          theme === 'dark' ? 'text-white' : 'text-gray-900'
-                        }`}>
-                          {'•'.repeat(8)}
+                        {currentUser.email || (isRTL ? 'غير محدد' : 'Not specified')}
+                      </span>
+                      {currentUser.isGoogleUser && (
+                        <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                          Google
                         </span>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => setShowPassword(!showPassword)}
-                          className={`ml-auto ${
-                            theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'
-                          } transition-colors`}
-                        >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </motion.button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
 
                   {/* Company ID */}
@@ -522,314 +475,114 @@ const UserProfile: React.FC = () => {
               </div>
             </motion.div>
 
-            {/* Admin Panel - Serial Numbers Management */}
-            {isAdmin && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 }}
-                className={`rounded-xl shadow-lg ${
-                  theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-                } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}
-              >
-                <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center justify-between">
-                    <h3 className={`text-xl font-semibold ${
-                      theme === 'dark' ? 'text-white' : 'text-gray-900'
+            {/* Additional Information */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4 }}
+              className={`rounded-xl shadow-lg ${
+                theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+              } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}
+            >
+              <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 className={`text-xl font-semibold ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>
+                  {isRTL ? 'معلومات إضافية' : 'Additional Information'}
+                </h3>
+              </div>
+
+              <div className="p-4 sm:p-6 space-y-4">
+                <div className={`p-4 rounded-lg ${
+                  theme === 'dark' ? 'bg-blue-900/20' : 'bg-blue-50'
+                } border border-blue-500/30`}>
+                  <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                    <Briefcase className="w-5 h-5 text-blue-500" />
+                    <span className={`font-medium ${
+                      theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
                     }`}>
-                      {isRTL ? 'إدارة الأرقام التسلسلية' : 'Serial Numbers Management'}
-                    </h3>
-                    
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setIsAddSerialModalOpen(true)}
-                      className="flex items-center px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-300"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      {isRTL ? 'إضافة' : 'Add'}
-                    </motion.button>
+                      {isRTL ? 'صلاحيات المستخدم' : 'User Permissions'}
+                    </span>
                   </div>
-                </div>
-
-                <div className="p-4 sm:p-6">
-                  {/* تنبيه حول الأرقام التسلسلية */}
-                  <div className={`mb-4 p-3 rounded-lg ${
-                    theme === 'dark' ? 'bg-blue-900/20' : 'bg-blue-50'
-                  } border border-blue-500/30`}>
-                    <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                      <AlertTriangle className="w-4 h-4 text-blue-500" />
-                      <span className={`text-sm font-medium ${
-                        theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-                      }`}>
-                        {isRTL ? 'الأرقام التسلسلية يجب أن تكون 6 أرقام فقط' : 'Serial numbers must be exactly 6 digits'}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {serialNumbers.map((serial, index) => (
-                      <motion.div
-                        key={serial.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        className={`p-4 rounded-lg border ${
-                          theme === 'dark' 
-                            ? 'border-gray-700 bg-gray-700/50' 
-                            : 'border-gray-200 bg-gray-50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                              <Hash className={`w-4 h-4 ${
-                                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                              }`} />
-                              <span className={`font-mono text-lg font-bold ${
-                                theme === 'dark' ? 'text-white' : 'text-gray-900'
-                              }`}>
-                                {serial.serialNumber}
-                              </span>
-                              {serial.serialNumber.length === 6 && /^\d{6}$/.test(serial.serialNumber) && (
-                                <CheckCircle className="w-4 h-4 text-green-500" />
-                              )}
-                            </div>
-                            <div className="flex items-center space-x-2 rtl:space-x-reverse mt-2">
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                serial.isUsed
-                                  ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                                  : 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                              }`}>
-                                {serial.isUsed ? (
-                                  <>
-                                    <XCircle className="w-3 h-3 mr-1" />
-                                    {isRTL ? 'مستخدم' : 'Used'}
-                                  </>
-                                ) : (
-                                  <>
-                                    <CheckCircle className="w-3 h-3 mr-1" />
-                                    {isRTL ? 'متاح' : 'Available'}
-                                  </>
-                                )}
-                              </span>
-                              <span className={`text-xs ${
-                                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                              }`}>
-                                {new Date(serial.createdAt).toLocaleDateString()}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {!serial.isUsed && (
-                            <motion.button
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              onClick={() => removeSerialNumber(serial.id)}
-                              className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </motion.button>
-                          )}
-                        </div>
-                      </motion.div>
-                    ))}
-                    
-                    {serialNumbers.length === 0 && (
-                      <div className={`text-center py-8 ${
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
-                        <Key className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                        <p>{isRTL ? 'لا توجد أرقام تسلسلية' : 'No serial numbers found'}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Employee View - Limited Info */}
-            {!isAdmin && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 }}
-                className={`rounded-xl shadow-lg ${
-                  theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-                } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}
-              >
-                <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
-                  <h3 className={`text-xl font-semibold ${
-                    theme === 'dark' ? 'text-white' : 'text-gray-900'
+                  <p className={`text-sm mt-2 ${
+                    theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
                   }`}>
-                    {isRTL ? 'معلومات إضافية' : 'Additional Information'}
-                  </h3>
+                    {isRTL 
+                      ? 'يمكنك عرض وإدارة المنتجات والمبيعات والتقارير'
+                      : 'You can view and manage products, sales, and reports'
+                    }
+                  </p>
                 </div>
 
-                <div className="p-4 sm:p-6 space-y-4">
-                  <div className={`p-4 rounded-lg ${
-                    theme === 'dark' ? 'bg-blue-900/20' : 'bg-blue-50'
-                  } border border-blue-500/30`}>
-                    <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                      <Briefcase className="w-5 h-5 text-blue-500" />
-                      <span className={`font-medium ${
-                        theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-                      }`}>
-                        {isRTL ? 'صلاحيات الموظف' : 'Employee Permissions'}
-                      </span>
-                    </div>
-                    <p className={`text-sm mt-2 ${
-                      theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                <div className={`p-4 rounded-lg ${
+                  theme === 'dark' ? 'bg-green-900/20' : 'bg-green-50'
+                } border border-green-500/30`}>
+                  <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                    <Shield className="w-5 h-5 text-green-500" />
+                    <span className={`font-medium ${
+                      theme === 'dark' ? 'text-green-400' : 'text-green-600'
                     }`}>
-                      {isRTL 
-                        ? 'يمكنك عرض وإدارة المنتجات والمبيعات والتقارير'
-                        : 'You can view and manage products, sales, and reports'
-                      }
-                    </p>
+                      {isRTL ? 'الأمان' : 'Security'}
+                    </span>
                   </div>
-
-                  <div className={`p-4 rounded-lg ${
-                    theme === 'dark' ? 'bg-green-900/20' : 'bg-green-50'
-                  } border border-green-500/30`}>
-                    <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                      <Shield className="w-5 h-5 text-green-500" />
-                      <span className={`font-medium ${
-                        theme === 'dark' ? 'text-green-400' : 'text-green-600'
-                      }`}>
-                        {isRTL ? 'الأمان' : 'Security'}
-                      </span>
-                    </div>
-                    <p className={`text-sm mt-2 ${
-                      theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-                    }`}>
-                      {isRTL 
-                        ? 'حسابك محمي برقم شركة فريد وكلمة مرور آمنة'
-                        : 'Your account is protected with a unique company ID and secure password'
-                      }
-                    </p>
-                  </div>
-
-                  <div className={`p-4 rounded-lg ${
-                    theme === 'dark' ? 'bg-purple-900/20' : 'bg-purple-50'
-                  } border border-purple-500/30`}>
-                    <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                      <SettingsIcon className="w-5 h-5 text-purple-500" />
-                      <span className={`font-medium ${
-                        theme === 'dark' ? 'text-purple-400' : 'text-purple-600'
-                      }`}>
-                        {isRTL ? 'الإعدادات' : 'Settings'}
-                      </span>
-                    </div>
-                    <p className={`text-sm mt-2 ${
-                      theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-                    }`}>
-                      {isRTL 
-                        ? 'يمكنك تخصيص إعدادات النظام من صفحة الإعدادات'
-                        : 'You can customize system settings from the settings page'
-                      }
-                    </p>
-                  </div>
+                  <p className={`text-sm mt-2 ${
+                    theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
+                    {isRTL 
+                      ? 'حسابك محمي برقم شركة فريد وكلمة مرور آمنة'
+                      : 'Your account is protected with a unique company ID and secure password'
+                    }
+                  </p>
                 </div>
-              </motion.div>
-            )}
+
+                <div className={`p-4 rounded-lg ${
+                  theme === 'dark' ? 'bg-purple-900/20' : 'bg-purple-50'
+                } border border-purple-500/30`}>
+                  <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                    <SettingsIcon className="w-5 h-5 text-purple-500" />
+                    <span className={`font-medium ${
+                      theme === 'dark' ? 'text-purple-400' : 'text-purple-600'
+                    }`}>
+                      {isRTL ? 'الإعدادات' : 'Settings'}
+                    </span>
+                  </div>
+                  <p className={`text-sm mt-2 ${
+                    theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
+                    {isRTL 
+                      ? 'يمكنك تخصيص إعدادات النظام من صفحة الإعدادات'
+                      : 'You can customize system settings from the settings page'
+                    }
+                  </p>
+                </div>
+
+                {currentUser.isGoogleUser && (
+                  <div className={`p-4 rounded-lg ${
+                    theme === 'dark' ? 'bg-orange-900/20' : 'bg-orange-50'
+                  } border border-orange-500/30`}>
+                    <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                      <Globe className="w-5 h-5 text-orange-500" />
+                      <span className={`font-medium ${
+                        theme === 'dark' ? 'text-orange-400' : 'text-orange-600'
+                      }`}>
+                        {isRTL ? 'حساب جوجل' : 'Google Account'}
+                      </span>
+                    </div>
+                    <p className={`text-sm mt-2 ${
+                      theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                    }`}>
+                      {isRTL 
+                        ? 'تم ربط حسابك بحساب جوجل للدخول السريع والآمن'
+                        : 'Your account is linked with Google for quick and secure login'
+                      }
+                    </p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
           </div>
         </div>
       </div>
-
-      {/* Add Serial Number Modal */}
-      <Modal
-        isOpen={isAddSerialModalOpen}
-        onClose={() => {
-          setIsAddSerialModalOpen(false);
-          setNewSerialNumber('');
-        }}
-        title={isRTL ? 'إضافة رقم تسلسلي جديد' : 'Add New Serial Number'}
-      >
-        <div className="space-y-4">
-          <div>
-            <label className={`block text-sm font-medium mb-2 ${
-              theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-            }`}>
-              {isRTL ? 'الرقم التسلسلي (6 أرقام)' : 'Serial Number (6 digits)'}
-            </label>
-            <input
-              type="text"
-              value={newSerialNumber}
-              onChange={(e) => {
-                // السماح بالأرقام فقط وحد أقصى 6 أرقام
-                const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-                setNewSerialNumber(value);
-              }}
-              placeholder={isRTL ? 'مثال: 123456' : 'Example: 123456'}
-              className={`w-full px-3 py-2 border rounded-lg font-mono text-lg ${
-                theme === 'dark'
-                  ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-              } focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                newSerialNumber && !isValidSerial(newSerialNumber) 
-                  ? 'border-red-500 focus:ring-red-500' 
-                  : ''
-              }`}
-              maxLength={6}
-            />
-            
-            {/* Validation Message */}
-            {newSerialNumber && !isValidSerial(newSerialNumber) && (
-              <motion.p
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-red-500 text-sm mt-1 flex items-center space-x-1 rtl:space-x-reverse"
-              >
-                <XCircle className="w-4 h-4" />
-                <span>
-                  {isRTL ? 'يجب أن يكون 6 أرقام فقط' : 'Must be exactly 6 digits'}
-                </span>
-              </motion.p>
-            )}
-            
-            {newSerialNumber && isValidSerial(newSerialNumber) && (
-              <motion.p
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-green-500 text-sm mt-1 flex items-center space-x-1 rtl:space-x-reverse"
-              >
-                <CheckCircle className="w-4 h-4" />
-                <span>
-                  {isRTL ? 'رقم تسلسلي صحيح' : 'Valid serial number'}
-                </span>
-              </motion.p>
-            )}
-          </div>
-          
-          <div className="flex justify-end space-x-3 rtl:space-x-reverse pt-4">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                setIsAddSerialModalOpen(false);
-                setNewSerialNumber('');
-              }}
-              className={`px-4 py-2 border rounded-lg ${
-                theme === 'dark'
-                  ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
-                  : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-              } transition-colors`}
-            >
-              {isRTL ? 'إلغاء' : 'Cancel'}
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleAddSerialNumber}
-              disabled={!newSerialNumber.trim() || !isValidSerial(newSerialNumber)}
-              className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center space-x-2 rtl:space-x-reverse"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{isRTL ? 'إضافة' : 'Add'}</span>
-            </motion.button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 };
