@@ -47,6 +47,7 @@ import {
 import { useStore } from '../store/useStore';
 import Sidebar from '../components/Layout/Sidebar';
 import AnimatedCounter from '../components/UI/AnimatedCounter';
+import { PDFGenerator } from '../utils/pdfGenerator';
 
 const Reports: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -190,7 +191,26 @@ const Reports: React.FC = () => {
     setIsLoading(false);
   };
 
+  // تحديث دالة تصدير التقارير لاستخدام PDF حقيقي
   const exportReport = (format: 'pdf' | 'csv', chartType?: string) => {
+    if (format === 'pdf') {
+      const pdfGenerator = new PDFGenerator(isRTL);
+      
+      switch (chartType) {
+        case 'categories':
+          pdfGenerator.generateCategoryReport(analytics.categoryData, isRTL);
+          break;
+        case 'performance':
+          pdfGenerator.generatePerformanceReport(analytics.monthlyData, isRTL);
+          break;
+        default:
+          pdfGenerator.generateFullReport(analytics, isRTL);
+          break;
+      }
+      return;
+    }
+
+    // CSV export (existing functionality)
     const fileName = chartType 
       ? `${chartType}-report-${new Date().toISOString().split('T')[0]}.${format}`
       : `full-report-${new Date().toISOString().split('T')[0]}.${format}`;
@@ -224,110 +244,6 @@ const Reports: React.FC = () => {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    } else if (format === 'pdf') {
-      // Simple PDF generation using window.print()
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        const html = `
-          <html>
-            <head>
-              <title>${fileName}</title>
-              <style>
-                body { font-family: Arial, sans-serif; padding: 20px; }
-                h1 { color: #3B82F6; }
-                table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                th { background-color: #f2f2f2; }
-                .header { display: flex; justify-content: space-between; align-items: center; }
-                .logo { font-size: 24px; font-weight: bold; color: #3B82F6; }
-                .date { color: #666; }
-              </style>
-            </head>
-            <body>
-              <div class="header">
-                <div class="logo">StockSence</div>
-                <div class="date">${new Date().toLocaleDateString()}</div>
-              </div>
-              <h1>${chartType ? `${chartType.charAt(0).toUpperCase() + chartType.slice(1)} Report` : 'Full Report'}</h1>
-              <p>Generated on: ${new Date().toLocaleString()}</p>
-              
-              <h2>Summary</h2>
-              <p>Total Products: ${analytics.totalProducts}</p>
-              <p>Total Sales: ${analytics.totalSales}</p>
-              <p>Total Revenue: ${formatPrice(analytics.totalRevenue)}</p>
-              <p>Inventory Value: ${formatPrice(analytics.totalInventoryValue)}</p>
-              
-              ${chartType === 'categories' ? `
-                <h2>Category Performance</h2>
-                <table>
-                  <tr>
-                    <th>Category</th>
-                    <th>Products</th>
-                    <th>Value</th>
-                    <th>Quantity</th>
-                  </tr>
-                  ${analytics.categoryData.map(cat => `
-                    <tr>
-                      <td>${cat.category}</td>
-                      <td>${cat.count}</td>
-                      <td>${formatPrice(cat.value)}</td>
-                      <td>${cat.quantity}</td>
-                    </tr>
-                  `).join('')}
-                </table>
-              ` : ''}
-              
-              ${chartType === 'performance' || !chartType ? `
-                <h2>Monthly Performance</h2>
-                <table>
-                  <tr>
-                    <th>Month</th>
-                    <th>Revenue</th>
-                    <th>Sales</th>
-                    <th>Profit</th>
-                    <th>Growth</th>
-                  </tr>
-                  ${analytics.monthlyData.map(month => `
-                    <tr>
-                      <td>${month.month}</td>
-                      <td>${formatPrice(month.revenue)}</td>
-                      <td>${month.sales}</td>
-                      <td>${formatPrice(month.profit)}</td>
-                      <td>${month.growth}%</td>
-                    </tr>
-                  `).join('')}
-                </table>
-              ` : ''}
-              
-              <h2>Top Performing Products</h2>
-              <table>
-                <tr>
-                  <th>Product</th>
-                  <th>Quantity Sold</th>
-                  <th>Revenue</th>
-                </tr>
-                ${analytics.topProducts.map((product: any) => `
-                  <tr>
-                    <td>${product.productName}</td>
-                    <td>${product.quantity}</td>
-                    <td>${formatPrice(product.revenue)}</td>
-                  </tr>
-                `).join('')}
-              </table>
-              
-              <div style="margin-top: 50px; text-align: center; color: #666;">
-                <p>© ${new Date().getFullYear()} StockSence - All Rights Reserved</p>
-              </div>
-            </body>
-          </html>
-        `;
-        
-        printWindow.document.write(html);
-        printWindow.document.close();
-        printWindow.onload = function() {
-          printWindow.print();
-        };
-      }
     }
   };
 
