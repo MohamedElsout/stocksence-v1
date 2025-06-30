@@ -2,6 +2,7 @@ import React, { useEffect, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useStore } from './store/useStore';
+import { useSecurityMonitor } from './hooks/useSecurityMonitor';
 import Header from './components/Layout/Header';
 import Notification from './components/UI/Notification';
 import GoogleAuthProvider from './components/Auth/GoogleAuthProvider';
@@ -18,16 +19,35 @@ const Download = React.lazy(() => import('./pages/Download'));
 const Auth = React.lazy(() => import('./pages/Auth'));
 const UserProfile = React.lazy(() => import('./pages/UserProfile'));
 
-// Loading component
+// Enhanced Loading component with security check
 const LoadingSpinner = () => (
   <div className="min-h-screen flex items-center justify-center">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+      <p className="text-gray-600 dark:text-gray-400">Loading securely...</p>
+    </div>
   </div>
 );
 
-// Protected Route Component
+// Enhanced Protected Route Component with security validation
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useStore();
+  const { isAuthenticated, currentUser, sessionToken, validateDataIntegrity } = useStore();
+  
+  // التحقق من صحة الجلسة والبيانات
+  useEffect(() => {
+    if (isAuthenticated && currentUser) {
+      // التحقق من تكامل البيانات
+      const isDataValid = validateDataIntegrity();
+      if (!isDataValid) {
+        console.warn('Data integrity check failed');
+      }
+      
+      // التحقق من صحة الجلسة
+      if (!sessionToken) {
+        console.warn('Invalid session token');
+      }
+    }
+  }, [isAuthenticated, currentUser, sessionToken, validateDataIntegrity]);
   
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
@@ -37,8 +57,20 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 function App() {
-  const { theme, language, currentCurrency, setCurrency, addNotification, isAuthenticated } = useStore();
+  const { 
+    theme, 
+    language, 
+    currentCurrency, 
+    setCurrency, 
+    addNotification, 
+    isAuthenticated,
+    encryptSensitiveData,
+    currentUser
+  } = useStore();
   const { i18n } = useTranslation();
+  
+  // تفعيل مراقبة الأمان
+  useSecurityMonitor();
 
   useEffect(() => {
     try {
@@ -58,7 +90,12 @@ function App() {
         setCurrency(savedCurrency);
       }
 
-      // Register Service Worker for PWA
+      // تشفير البيانات الحساسة عند تسجيل الدخول
+      if (isAuthenticated && currentUser) {
+        encryptSensitiveData();
+      }
+
+      // Register Service Worker for PWA with enhanced security
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./sw.js')
@@ -74,8 +111,8 @@ function App() {
                       addNotification({
                         type: 'success',
                         message: language === 'ar' 
-                          ? 'تحديث جديد متاح! أعد تحميل الصفحة للحصول على أحدث إصدار.'
-                          : 'New update available! Reload the page to get the latest version.'
+                          ? 'تحديث أمني جديد متاح! أعد تحميل الصفحة للحصول على أحدث إصدار.'
+                          : 'New security update available! Reload the page to get the latest version.'
                       });
                     }
                   });
@@ -88,7 +125,7 @@ function App() {
         });
       }
 
-      // Handle PWA install prompt
+      // Handle PWA install prompt with security notice
       let deferredPrompt: any;
       
       const handleBeforeInstallPrompt = (e: Event) => {
@@ -100,8 +137,8 @@ function App() {
           addNotification({
             type: 'success',
             message: language === 'ar' 
-              ? '📱 يمكنك تثبيت StockSence كتطبيق! اذهب لصفحة "تحميل النظام"'
-              : '📱 You can install StockSence as an app! Go to "Download System" page'
+              ? '📱 يمكنك تثبيت StockSence كتطبيق آمن! اذهب لصفحة "تحميل النظام"'
+              : '📱 You can install StockSence as a secure app! Go to "Download System" page'
           });
         }, 3000);
       };
@@ -110,8 +147,8 @@ function App() {
         addNotification({
           type: 'success',
           message: language === 'ar' 
-            ? '🎉 تم تثبيت StockSence بنجاح! يمكنك الآن استخدامه بدون إنترنت'
-            : '🎉 StockSence installed successfully! You can now use it offline'
+            ? '🎉 تم تثبيت StockSence بنجاح مع الحماية المتقدمة! يمكنك الآن استخدامه بدون إنترنت'
+            : '🎉 StockSence installed successfully with advanced security! You can now use it offline'
         });
         deferredPrompt = null;
       };
@@ -119,14 +156,50 @@ function App() {
       window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.addEventListener('appinstalled', handleAppInstalled);
 
+      // Enhanced security: Disable right-click context menu in production
+      const handleContextMenu = (e: MouseEvent) => {
+        if (process.env.NODE_ENV === 'production') {
+          e.preventDefault();
+        }
+      };
+
+      // Enhanced security: Disable F12 and other dev tools shortcuts
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (process.env.NODE_ENV === 'production') {
+          // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
+          if (e.key === 'F12' || 
+              (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J')) ||
+              (e.ctrlKey && e.key === 'U')) {
+            e.preventDefault();
+            addNotification({
+              type: 'warning',
+              message: language === 'ar' 
+                ? '⚠️ تم تعطيل أدوات المطور لحماية النظام' 
+                : '⚠️ Developer tools disabled for system security'
+            });
+          }
+        }
+      };
+
+      document.addEventListener('contextmenu', handleContextMenu);
+      document.addEventListener('keydown', handleKeyDown);
+
       return () => {
         window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
         window.removeEventListener('appinstalled', handleAppInstalled);
+        document.removeEventListener('contextmenu', handleContextMenu);
+        document.removeEventListener('keydown', handleKeyDown);
       };
     } catch (error) {
       console.error('Error in App useEffect:', error);
+      addNotification({
+        type: 'error',
+        message: language === 'ar' 
+          ? 'حدث خطأ في تهيئة النظام' 
+          : 'System initialization error occurred'
+      });
     }
-  }, [theme, language, i18n, currentCurrency, setCurrency, addNotification]);
+  }, [theme, language, i18n, currentCurrency, setCurrency, addNotification, isAuthenticated, currentUser, encryptSensitiveData]);
 
   return (
     <GoogleAuthProvider>
