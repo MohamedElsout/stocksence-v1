@@ -50,6 +50,17 @@ export interface User {
   createdAt: Date;
   isActive: boolean;
   email?: string;
+  googleId?: string;
+  picture?: string;
+  isGoogleUser?: boolean;
+}
+
+export interface GoogleUserInfo {
+  id: string;
+  email: string;
+  name: string;
+  picture: string;
+  accessToken: string;
 }
 
 export interface SerialNumber {
@@ -71,6 +82,7 @@ interface StoreState {
   autoLoginWithGoogle: boolean;
   currentCompanyId: string | null;
   login: (username: string, password: string, companyId?: string) => Promise<boolean>;
+  loginWithGoogle: (googleUserInfo: GoogleUserInfo) => Promise<boolean>;
   logout: () => void;
   register: (username: string, password: string, email?: string) => Promise<boolean>;
   addSerialNumber: (serialNumber: string) => void;
@@ -248,6 +260,76 @@ export const useStore = create<StoreState>()(
           message: state.language === 'ar' ? 'تم تسجيل الدخول بنجاح!' : 'Login successful!' 
         });
         return true;
+      },
+
+      loginWithGoogle: async (googleUserInfo: GoogleUserInfo) => {
+        const state = get();
+        
+        // 🧹 تنظيف المبيعات القديمة عند تسجيل الدخول
+        get().cleanupOldDeletedSales();
+        
+        // البحث عن مستخدم موجود بنفس Google ID أو البريد الإلكتروني
+        let existingUser = state.users.find(u => 
+          u.googleId === googleUserInfo.id || 
+          (u.email === googleUserInfo.email && u.isGoogleUser)
+        );
+        
+        if (existingUser) {
+          // تحديث معلومات المستخدم الموجود
+          const updatedUser = {
+            ...existingUser,
+            googleId: googleUserInfo.id,
+            picture: googleUserInfo.picture,
+            isGoogleUser: true
+          };
+          
+          set(state => ({
+            users: state.users.map(u => u.id === existingUser!.id ? updatedUser : u),
+            currentUser: updatedUser,
+            isAuthenticated: true,
+            currentCompanyId: updatedUser.companyId
+          }));
+          
+          return true;
+        } else {
+          // إنشاء مستخدم جديد من Google
+          const companyId = generateCompanyId();
+          const newUser: User = {
+            id: generateId(),
+            username: googleUserInfo.name.replace(/\s+/g, '_').toLowerCase(),
+            password: '', // لا نحتاج كلمة مرور للمستخدمين من Google
+            role: 'admin', // كل مستخدم جديد يصبح أدمن لشركته
+            companyId,
+            createdAt: new Date(),
+            isActive: true,
+            email: googleUserInfo.email,
+            googleId: googleUserInfo.id,
+            picture: googleUserInfo.picture,
+            isGoogleUser: true
+          };
+          
+          // إنشاء رقم تسلسلي تلقائي للمستخدم الجديد
+          const autoSerialNumber = generateSimpleSerial();
+          const newSerial: SerialNumber = {
+            id: generateId(),
+            serialNumber: autoSerialNumber,
+            isUsed: true,
+            createdAt: new Date(),
+            usedBy: newUser.id,
+            usedAt: new Date(),
+            companyId
+          };
+          
+          set(state => ({
+            users: [...state.users, newUser],
+            currentUser: newUser,
+            isAuthenticated: true,
+            currentCompanyId: companyId,
+            serialNumbers: [...state.serialNumbers, newSerial]
+          }));
+          
+          return true;
+        }
       },
 
       register: async (username: string, password: string, email?: string) => {
